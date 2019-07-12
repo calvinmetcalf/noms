@@ -14,19 +14,19 @@ var noms = require('noms');
 Create a quick readable stream
 
 ```js
-nom([options], read, [before]);
+noms([options], read, [before]);
 ```
 
-options is optional and passed to readable stream just like in from2 or through2
+options is optional and passed to readable stream just like in [from2](https://github.com/hughsk/from2) or [through2](https://github.com/rvagg/through2)
 
 read is the main read function, it is similar to the original node streams but size is optional and a callback is passed.  It will NOT be called again until the callback is called.
 
 before is called right before the first call to read in order to do setup, it is passed a callback and read will not be called until the callback is called.
 
-like through2 and from2 noms also features
+like [through2](https://github.com/rvagg/through2) and [from2](https://github.com/hughsk/from2), noms also features
 
 ```js
-nom.obj([options], read, [before]);
+noms.obj([options], read, [before]);
 ```
 
 which is shorthand for creating an object stream and like from2 noms has
