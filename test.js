@@ -1,10 +1,9 @@
-'use strict';
-var test = require('tape');
-var noms = require('./');
+import test from 'tape';
+import noms, { obj, ctor } from './index.js'
 
 function countObj(num) {
   var i = 20;
-  return noms.obj(function(next) {
+  return obj(function (next) {
     if (++i < num) {
       this.push({
         num: i
@@ -15,19 +14,19 @@ function countObj(num) {
     process.nextTick(function () {
       next();
     });
-  }, function (next){
+  }, function (next) {
     this.push({
       num: 0
     });
     i = 1;
-    next(null, {num: 1});
+    next(null, { num: 1 });
   });
 }
 function countObjWithNext(num) {
   var i = -1;
-  return noms.obj(function(next) {
+  return obj(function (next) {
     if (++i < num) {
-       process.nextTick(function () {
+      process.nextTick(function () {
         next(null, {
           num: i
         });
@@ -41,7 +40,7 @@ function countObjWithNext(num) {
 }
 function dripWordAsync(string, opts) {
   // from from2's tests
-  return noms(opts||{}, function(size, next) {
+  return noms(opts || {}, function (size, next) {
     if (string.length <= 0) {
       return next(null, null);
     }
@@ -54,7 +53,7 @@ function dripWordAsync(string, opts) {
 }
 function dripWord(string, opts) {
   // from from2's tests
-  return noms(opts||{}, function(size, next) {
+  return noms(opts || {}, function (size, next) {
     if (string.length <= 0) {
       return next(null, null);
     }
@@ -86,7 +85,7 @@ test('works with size 1', function (t) {
 });
 test('works with size 2', function (t) {
   t.plan(3);
-  dripWord('abcde', {highWaterMark: 2}).on('data', function (d) {
+  dripWord('abcde', { highWaterMark: 2 }).on('data', function (d) {
     t.ok(true, d.toString());
   });
 });
@@ -101,7 +100,7 @@ test('works with size async 1', function (t) {
 });
 test('works with size async 2', function (t) {
   t.plan(3);
-  dripWordAsync('abcde', {highWaterMark: 2}).on('data', function (d) {
+  dripWordAsync('abcde', { highWaterMark: 2 }).on('data', function (d) {
     t.ok(true, d.toString());
   });
 });
