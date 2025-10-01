@@ -1,93 +1,103 @@
-'use strict';
+import { Readable } from 'readable-stream';
 
-var Readable = require('readable-stream').Readable;
-var inherits = require('inherits');
-inherits(Noms, Readable);
-function Noms (options) {
-  Readable.call(this,options);
-  this.inProgress = false;
-  this.lastPush = void 0;
-  this.started = false;
-  this.errored = false;
-}
-Noms.prototype.push = function(chunk, encoding) {
-      this.lastPush = Readable.prototype.push.call(this, chunk, encoding);
-      return this.lastPush;
-  };
-Noms.prototype.nom = function (callback) {
-  callback(null, null);
-};
-Noms.prototype._read = function (size) {
-  if (this.inProgress || this.errored) {
-    return;
+class Noms extends Readable {
+  constructor(options) {
+    super(options);
+    this.inProgress = false;
+    this.lastPush = void 0;
+    this.started = false;
+    this.errored = false;
   }
-  if (this.started === false) {
+  push(chunk, encoding) {
+    this.lastPush = super.push(chunk, encoding);
+    return this.lastPush;
+  }
+  nom(callback) {
+    callback(null, null);
+  }
+  _read(size) {
+    if (this.inProgress || this.errored) {
+      return;
+    }
+    if (this.started === false) {
+      this.inProgress = true;
+      this.callStart(size);
+      return;
+    }
     this.inProgress = true;
-    this.callStart(size);
-    return;
+    this.callRead(size);
   }
-  this.inProgress = true;
-  this.callRead(size);
-};
-Noms.prototype._before = function (next) {
-  next();
-};
-Noms.prototype.callRead = function (size) {
-  var useSize = this.nom.length > 1;
-  // so if nothing is pushed, we'll go agian
-  this.lastPush = true;
-  var self = this;
-  function cb(err, chunk) {
-    if (err) {
-      self.errored = true;
-      self.inProgress = false;
-      self.emit('error', err);
-      return;
+  _before(next) {
+    next();
+  }
+  callRead(size) {
+    var useSize = this.nom.length > 1;
+    // so if nothing is pushed, we'll go agian
+    this.lastPush = true;
+    const cb = (err, chunk) => {
+      if (err) {
+        this.errored = true;
+        this.inProgress = false;
+        this.emit('error', err);
+        return;
+      }
+      if (chunk !== undefined) {
+        this.push(chunk);
+      }
+      if (this.lastPush) {
+        return this.callRead(size);
+      } else {
+        this.inProgress = false;
+      }
     }
-    if (chunk !== undefined) {
-      self.push(chunk);
-    }
-    if (self.lastPush) {
-      return self.callRead(size);
+    if (useSize) {
+      this.nom(size, cb);
     } else {
-      self.inProgress = false;
+      this.nom(cb);
     }
   }
-  if (useSize) {
-    this.nom(size, cb);
-  } else {
-     this.nom(cb);
-  }
-};
-Noms.prototype.callStart = function (size) {
-  var self = this;
-  function cb(err, chunk) {
-    self.started = true;
-    if (err) {
-      self.errored = true;
-      self.inProgress = false;
-      self.emit('error', err);
-      return;
+  callStart(size) {
+    const cb = (err, chunk) => {
+      this.started = true;
+      if (err) {
+        this.errored = true;
+        this.inProgress = false;
+        this.emit('error', err);
+        return;
+      }
+      if (chunk !== undefined) {
+        this.push(chunk);
+      }
+      this.callRead(size);
     }
-    if (chunk !== undefined) {
-      self.push(chunk);
+    this._before(cb);
+  };
+}
+
+export function ctor(read, before) {
+
+  class YourStream extends Noms {
+    #read = read;
+    #before = before;
+    get nom() {
+      return this.#read;
     }
-    self.callRead(size);
-  }
-  this._before(cb);
-};
-function ctor(read, before) {
-  inherits(YourStream, Noms);
-  function YourStream (opts) {
-    Noms.call(this, opts);
-  }
-  YourStream.prototype.nom = read;
-  if (typeof before === 'function') {
-    YourStream.prototype._before = before;
+    set nom(value) {
+      this.#read = value;
+    }
+    get _before() {
+      if (typeof before === 'function') {
+        return before
+      }
+      return super._before;
+    }
+    set _before(value) {
+      this.#before = value
+    }
   }
   return YourStream;
 }
-module.exports = exports = function(options, read, before) {
+export default (options, read, before) => {
   if (typeof options === 'function') {
     before = read;
     read = options;
@@ -95,18 +105,13 @@ module.exports = exports = function(options, read, before) {
   }
   return new (ctor(read, before))(options);
 };
-exports.ctor = ctor;
-exports.obj = function(options, read, before) {
-  var out = {};
+export const obj = (options = {}, read, before) => {
   if (typeof options === 'function') {
     before = read;
     read = options;
     options = undefined;
   }
-  options = options || {};
-  Object.keys(options).forEach(function (key) {
-    out[key] = options[key];
-  });
+  var out = { ...options }
   out.objectMode = true;
   return new (ctor(read, before))(out);
 };
